@@ -35,8 +35,11 @@ module Deliver
         return
       end
 
-      app.update(attributes: attributes, app_price_tier_id: price_tier, territory_ids: territory_ids)
-      UI.success("Successfully updated the pricing from #{old_price} to #{price_tier}")
+      # As this API is deprecated, we've decided to comment this functionality
+      # https://developer.apple.com/documentation/appstoreconnectapi/appupdaterequest/data/relationships
+      # app.update(attributes: attributes, app_price_tier_id: price_tier, territory_ids: territory_ids)
+      # UI.success("Successfully updated the pricing from #{old_price} to #{price_tier}")
+      UI.important("Updating the pricing from #{old_price} to #{price_tier} is disabled. file: upload_price_tier.rb")
     end
   end
 end
