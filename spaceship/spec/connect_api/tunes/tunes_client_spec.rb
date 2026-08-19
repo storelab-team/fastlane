@@ -61,6 +61,130 @@ describe Spaceship::ConnectAPI::Tunes::Client do
           client.get_app_availabilities(app_id: app_id, includes: "territoryAvailabilities", limit: { "territoryAvailabilities": 200 })
         end
       end
+
+      context 'post_app_availability' do
+        let(:path) { "v2/appAvailabilities" }
+        let(:app_id) { "123" }
+        let(:body) do
+          {
+            data: {
+              type: "appAvailabilities",
+              attributes: {
+                availableInNewTerritories: true
+              },
+              relationships: {
+                app: {
+                  data: { type: "apps", id: app_id }
+                },
+                territoryAvailabilities: {
+                  data: [
+                    { type: "territoryAvailabilities", id: "${USA}" },
+                    { type: "territoryAvailabilities", id: "${GBR}" }
+                  ]
+                }
+              }
+            },
+            included: [
+              {
+                type: "territoryAvailabilities",
+                id: "${USA}",
+                attributes: { available: true },
+                relationships: {
+                  territory: { data: { type: "territories", id: "USA" } }
+                }
+              },
+              {
+                type: "territoryAvailabilities",
+                id: "${GBR}",
+                attributes: { available: true },
+                relationships: {
+                  territory: { data: { type: "territories", id: "GBR" } }
+                }
+              }
+            ]
+          }
+        end
+
+        it 'succeeds' do
+          url = path
+          req_mock = test_request_body(url, body)
+          expect(client).to receive(:request).with(:post).and_yield(req_mock).and_return(req_mock)
+          client.post_app_availability(app_id: app_id, territory_ids: ["USA", "GBR"], available_in_new_territories: true)
+        end
+      end
+    end
+
+    describe "appPriceSchedules" do
+      context 'get_app_price_schedule' do
+        let(:app_id) { "123" }
+        let(:path) { "v1/apps/#{app_id}/appPriceSchedule" }
+
+        it 'succeeds' do
+          params = { include: "manualPrices,baseTerritory" }
+          req_mock = test_request_params(path, params)
+          expect(client).to receive(:request).with(:get).and_yield(req_mock).and_return(req_mock)
+          client.get_app_price_schedule(app_id: app_id, includes: "manualPrices,baseTerritory")
+        end
+      end
+
+      context 'post_app_price_schedule' do
+        let(:app_id) { "123" }
+        let(:path) { "v1/appPriceSchedules" }
+        let(:body) do
+          {
+            data: {
+              type: "appPriceSchedules",
+              relationships: {
+                app: {
+                  data: { type: "apps", id: app_id }
+                },
+                baseTerritory: {
+                  data: { type: "territories", id: "USA" }
+                },
+                manualPrices: {
+                  data: [
+                    { type: "appPrices", id: "${manualPrice-0}" }
+                  ]
+                }
+              }
+            },
+            included: [
+              {
+                type: "appPrices",
+                id: "${manualPrice-0}",
+                relationships: {
+                  appPricePoint: {
+                    data: { type: "appPricePoints", id: "price-point-123" }
+                  }
+                }
+              }
+            ]
+          }
+        end
+
+        it 'succeeds' do
+          url = path
+          req_mock = test_request_body(url, body)
+          expect(client).to receive(:request).with(:post).and_yield(req_mock).and_return(req_mock)
+          client.post_app_price_schedule(
+            app_id: app_id,
+            base_territory_id: "USA",
+            manual_prices: [{ app_price_point_id: "price-point-123" }]
+          )
+        end
+      end
+
+      context 'get_app_price_points_for_app' do
+        let(:app_id) { "123" }
+        let(:path) { "v1/apps/#{app_id}/appPricePoints" }
+
+        it 'succeeds' do
+          params = { filter: { territory: "USA" }, include: "territory" }
+          req_mock = test_request_params(path, params)
+          expect(client).to receive(:request).with(:get).and_yield(req_mock).and_return(req_mock)
+          client.get_app_price_points_for_app(app_id: app_id, filter: { territory: "USA" }, includes: "territory")
+        end
+      end
     end
 
     describe "appStoreVersionReleaseRequests" do

@@ -10,6 +10,8 @@ module Spaceship
       attr_accessor :pre_order_publish_date
       attr_accessor :release_date
 
+      attr_accessor :territory
+
       module ContentStatus
         AVAILABLE = "AVAILABLE"
         AVAILABLE_FOR_PREORDER_ON_DATE = "AVAILABLE_FOR_PREORDER_ON_DATE"
@@ -51,7 +53,8 @@ module Spaceship
         contentStatuses: 'content_statuses',
         preOrderEnabled: 'pre_order_enabled',
         preOrderPublishDate: 'pre_order_publish_date',
-        releaseDate: 'release_date'
+        releaseDate: 'release_date',
+        territory: 'territory'
       })
 
       def self.type

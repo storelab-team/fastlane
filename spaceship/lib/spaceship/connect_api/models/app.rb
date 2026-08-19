@@ -104,12 +104,12 @@ module Spaceship
         return client.get_app(app_id: app_id, includes: includes).first
       end
 
-      # Updates app attributes, price tier and availability of an app in territories
-      # Check Tunes patch_app method for explanation how to use territory_ids parameter with allow_removing_from_sale to remove app from sale
-      def update(client: nil, attributes: nil, app_price_tier_id: nil, territory_ids: nil, allow_removing_from_sale: false)
+      # Updates app attributes (non-pricing, non-availability).
+      # Use update_price_schedule for pricing and update_availability for territories.
+      def update(client: nil, attributes: nil)
         client ||= Spaceship::ConnectAPI
         attributes = reverse_attr_mapping(attributes)
-        return client.patch_app(app_id: id, attributes: attributes, app_price_tier_id: app_price_tier_id, territory_ids: territory_ids, allow_removing_from_sale: allow_removing_from_sale)
+        return client.patch_app(app_id: id, attributes: attributes)
       end
 
       #
@@ -155,7 +155,7 @@ module Spaceship
       # App Availabilities
       #
 
-      def get_app_availabilities(client: nil, filter: {}, includes: "territoryAvailabilities", limit: { "territoryAvailabilities": 200 })
+      def get_app_availabilities(client: nil, filter: {}, includes: "territoryAvailabilities", limit: { "territoryAvailabilities": 50 })
         client ||= Spaceship::ConnectAPI
         resp = client.get_app_availabilities(app_id: id, filter: filter, includes: includes, limit: limit, sort: nil)
         return resp.to_models.first
@@ -180,6 +180,54 @@ module Spaceship
         client ||= Spaceship::ConnectAPI
         resp = client.get_app_prices(app_id: id, filter: filter, includes: includes, limit: limit, sort: sort)
         return resp.to_models
+      end
+
+      #
+      # App Price Schedule (new API - replaces appPrices for setting prices)
+      #
+
+      def fetch_app_price_schedule(client: nil, includes: "manualPrices,baseTerritory")
+        client ||= Spaceship::ConnectAPI
+        resp = client.get_app_price_schedule(app_id: id, includes: includes)
+        return resp.to_models.first
+      end
+
+      def fetch_app_price_points(client: nil, filter: {}, includes: "territory", limit: nil, sort: nil)
+        client ||= Spaceship::ConnectAPI
+        resps = client.get_app_price_points_for_app(app_id: id, filter: filter, includes: includes, limit: limit, sort: sort).all_pages
+        return resps.flat_map(&:to_models)
+      end
+
+      # Creates or replaces the app's price schedule.
+      # @param base_territory_id [String] Territory code for the base price (e.g. "USA")
+      # @param manual_prices [Array<Hash>] Each hash must include :app_price_point_id,
+      #   and optionally :start_date, :end_date
+      def update_price_schedule(client: nil, base_territory_id:, manual_prices:)
+        client ||= Spaceship::ConnectAPI
+        resp = client.post_app_price_schedule(app_id: id, base_territory_id: base_territory_id, manual_prices: manual_prices)
+        return resp.to_models.first
+      end
+
+      #
+      # App Availability (new API)
+      #
+
+      def update_availability(client: nil, territory_ids:, available_in_new_territories: true)
+        client ||= Spaceship::ConnectAPI
+        resp = client.post_app_availability(app_id: id, territory_ids: territory_ids, available_in_new_territories: available_in_new_territories)
+        return resp.to_models.first
+      end
+
+      def fetch_territory_availabilities(client: nil, includes: "territory", limit: 200)
+        client ||= Spaceship::ConnectAPI
+        resps = client.get_territory_availabilities(app_availability_id: id, includes: includes, limit: limit).all_pages
+        return resps.flat_map(&:to_models)
+      end
+
+      def patch_territory_availability(client: nil, territory_availability_id:, available:)
+        client ||= Spaceship::ConnectAPI
+        resp = client.patch_territory_availability(territory_availability_id: territory_availability_id, available: available)
+        return resp.to_models.first
       end
 
       #

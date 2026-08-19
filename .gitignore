@@ -64,6 +64,9 @@ fastlane/FastlaneRunner
 fastlane/swift/FastlaneRunner
 vendor
 
+# Swift Package Manager build artifacts
+.build/
+
 # iOS specific ignores, used in sample projects inside the repo
 DerivedData
 *.pbxuser

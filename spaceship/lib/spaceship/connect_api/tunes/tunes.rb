@@ -140,77 +140,23 @@ module Spaceship
           tunes_request_client.post("#{Version::V1}/apps", body)
         end
 
-        # Updates app attributes, price tier, visibility in regions or countries.
-        # Use territory_ids with allow_removing_from_sale to remove app from sale
-        # @param territory_ids updates app visibility in regions or countries.
-        #   Possible values:
-        #   empty array will remove app from sale if allow_removing_from_sale is true,
-        #   array with territory ids will set availability to territories with those ids,
-        #   nil will leave app availability on AppStore as is
-        # @param allow_removing_from_sale allows for removing app from sale when territory_ids is an empty array
-        def patch_app(app_id: nil, attributes: {}, app_price_tier_id: nil, territory_ids: nil, allow_removing_from_sale: false)
-          relationships = {}
-          included = []
-
-          # Price tier
-          unless app_price_tier_id.nil?
-            relationships[:prices] = {
-              data: [
-                {
-                  type: "appPrices",
-                  id: "${price1}"
-                }
-              ]
-            }
-
-            included << {
-              type: "appPrices",
-              id: "${price1}",
-              relationships: {
-                app: {
-                  data: {
-                    type: "apps",
-                    id: app_id
-                  }
-                },
-                priceTier: {
-                  data: {
-                    type: "appPriceTiers",
-                    id: app_price_tier_id.to_s
-                  }
-                }
-              }
-            }
-          end
-
-          # Territories
-          unless territory_ids.nil?
-            territories_data = territory_ids.map do |id|
-              { type: "territories", id: id }
-            end
-            if !territories_data.empty? || allow_removing_from_sale
-              relationships[:availableTerritories] = {
-                data: territories_data
-              }
-            end
-          end
-
-          # Data
+        # Updates app attributes.
+        # Pricing and availability are now managed through separate endpoints:
+        # - Use post_app_price_schedule for pricing (appPriceSchedules)
+        # - Use post_app_availability for territory availability (appAvailabilities)
+        def patch_app(app_id: nil, attributes: {})
           data = {
             type: "apps",
             id: app_id
           }
-          data[:relationships] = relationships unless relationships.empty?
 
           if !attributes.nil? && !attributes.empty?
             data[:attributes] = attributes
           end
 
-          # Body
           body = {
             data: data
           }
-          body[:included] = included unless included.empty?
 
           tunes_request_client.patch("#{Version::V1}/apps/#{app_id}", body)
         end
@@ -421,8 +367,71 @@ module Spaceship
         #
 
         def get_app_availabilities(app_id: nil, filter: nil, includes: nil, limit: nil, sort: nil)
-          params = tunes_request_client.build_params(filter: nil, includes: includes, limit: limit, sort: nil)
+          params = tunes_request_client.build_params(filter: filter, includes: includes, limit: limit, sort: sort)
           tunes_request_client.get("#{Version::V2}/appAvailabilities/#{app_id}", params)
+        end
+
+        def get_territory_availabilities(app_availability_id:, filter: nil, includes: nil, limit: nil, sort: nil)
+          params = tunes_request_client.build_params(filter: filter, includes: includes, limit: limit, sort: sort)
+          tunes_request_client.get("#{Version::V2}/appAvailabilities/#{app_availability_id}/territoryAvailabilities", params)
+        end
+
+        def patch_territory_availability(territory_availability_id:, available:)
+          body = {
+            data: {
+              type: "territoryAvailabilities",
+              id: territory_availability_id,
+              attributes: {
+                available: available
+              }
+            }
+          }
+
+          tunes_request_client.patch("#{Version::V1}/territoryAvailabilities/#{territory_availability_id}", body)
+        end
+
+        def post_app_availability(app_id:, territory_ids:, available_in_new_territories: true)
+          raise "app_id is required" if app_id.nil?
+          raise "territory_ids is required" if territory_ids.nil?
+
+          territory_availability_data = territory_ids.map do |code|
+            { type: "territoryAvailabilities", id: "${#{code}}" }
+          end
+
+          included = territory_ids.map do |code|
+            {
+              type: "territoryAvailabilities",
+              id: "${#{code}}",
+              attributes: {
+                available: true
+              },
+              relationships: {
+                territory: {
+                  data: { type: "territories", id: code }
+                }
+              }
+            }
+          end
+
+          body = {
+            data: {
+              type: "appAvailabilities",
+              attributes: {
+                availableInNewTerritories: available_in_new_territories
+              },
+              relationships: {
+                app: {
+                  data: { type: "apps", id: app_id }
+                },
+                territoryAvailabilities: {
+                  data: territory_availability_data
+                }
+              }
+            },
+            included: included
+          }
+
+          tunes_request_client.post("#{Version::V2}/appAvailabilities", body)
         end
 
         #
@@ -435,7 +444,68 @@ module Spaceship
         end
 
         #
-        # appPrices
+        # appPriceSchedules
+        #
+
+        def get_app_price_schedule(app_id:, includes: nil)
+          params = tunes_request_client.build_params(filter: nil, includes: includes, limit: nil, sort: nil)
+          tunes_request_client.get("#{Version::V1}/apps/#{app_id}/appPriceSchedule", params)
+        end
+
+        def post_app_price_schedule(app_id:, base_territory_id:, manual_prices:)
+          raise "app_id is required" if app_id.nil?
+          raise "base_territory_id is required" if base_territory_id.nil?
+          raise "manual_prices is required" if manual_prices.nil? || manual_prices.empty?
+
+          price_data = manual_prices.each_with_index.map do |_, idx|
+            { type: "appPrices", id: "${manualPrice-#{idx}}" }
+          end
+
+          included = manual_prices.each_with_index.map do |price, idx|
+            entry = {
+              type: "appPrices",
+              id: "${manualPrice-#{idx}}",
+              relationships: {
+                appPricePoint: {
+                  data: {
+                    type: "appPricePoints",
+                    id: price[:app_price_point_id]
+                  }
+                }
+              }
+            }
+
+            attributes = {}
+            attributes[:startDate] = price[:start_date] if price.key?(:start_date)
+            attributes[:endDate] = price[:end_date] if price.key?(:end_date)
+            entry[:attributes] = attributes unless attributes.empty?
+
+            entry
+          end
+
+          body = {
+            data: {
+              type: "appPriceSchedules",
+              relationships: {
+                app: {
+                  data: { type: "apps", id: app_id }
+                },
+                baseTerritory: {
+                  data: { type: "territories", id: base_territory_id }
+                },
+                manualPrices: {
+                  data: price_data
+                }
+              }
+            },
+            included: included
+          }
+
+          tunes_request_client.post("#{Version::V1}/appPriceSchedules", body)
+        end
+
+        #
+        # appPrices (deprecated - kept for backwards compatibility)
         #
 
         def get_app_prices(app_id: nil, filter: {}, includes: nil, limit: nil, sort: nil)
@@ -451,6 +521,12 @@ module Spaceship
         #
         # appPricePoints
         #
+
+        def get_app_price_points_for_app(app_id:, filter: {}, includes: nil, limit: nil, sort: nil)
+          params = tunes_request_client.build_params(filter: filter, includes: includes, limit: limit, sort: sort)
+          tunes_request_client.get("#{Version::V1}/apps/#{app_id}/appPricePoints", params)
+        end
+
         def get_app_price_points(filter: {}, includes: nil, limit: nil, sort: nil)
           params = tunes_request_client.build_params(filter: filter, includes: includes, limit: limit, sort: sort)
           tunes_request_client.get("#{Version::V1}/appPricePoints", params)

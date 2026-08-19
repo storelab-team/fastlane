@@ -8,6 +8,7 @@ require 'spaceship'
 require_relative 'html_generator'
 require_relative 'submit_for_review'
 require_relative 'upload_price_tier'
+require_relative 'upload_availability'
 require_relative 'upload_metadata'
 require_relative 'upload_app_clip_default_experience_metadata'
 require_relative 'upload_app_clip_default_experience_header_images'
@@ -179,6 +180,7 @@ module Deliver
       end
 
       UploadPriceTier.new.upload(options)
+      UploadAvailability.new.upload(options)
     end
 
     # Verify the binary with App Store Connect

@@ -15,13 +15,33 @@ class ConnectAPIStubbing
       end
 
       def stub_get_app_availabilities_ready_for_distribution
-        stub_request(:get, "https://appstoreconnect.apple.com/iris/v2/appAvailabilities/123456789?include=territoryAvailabilities&limit%5BterritoryAvailabilities%5D=200").
+        stub_request(:get, "https://appstoreconnect.apple.com/iris/v2/appAvailabilities/123456789?include=territoryAvailabilities&limit%5BterritoryAvailabilities%5D=50").
           to_return(status: 200, body: read_fixture_file('app_availabilities_ready_for_distribution.json'), headers: { 'Content-Type' => 'application/json' })
       end
 
       def stub_get_app_availabilities_removed_from_sale
-        stub_request(:get, "https://appstoreconnect.apple.com/iris/v2/appAvailabilities/123456789?include=territoryAvailabilities&limit%5BterritoryAvailabilities%5D=200").
+        stub_request(:get, "https://appstoreconnect.apple.com/iris/v2/appAvailabilities/123456789?include=territoryAvailabilities&limit%5BterritoryAvailabilities%5D=50").
           to_return(status: 200, body: read_fixture_file('app_availabilities_removed_app.json'), headers: { 'Content-Type' => 'application/json' })
+      end
+
+      def stub_get_app_price_schedule
+        stub_request(:get, "https://appstoreconnect.apple.com/iris/v1/apps/123456789/appPriceSchedule?include=manualPrices%2CmanualPrices.appPricePoint%2CbaseTerritory").
+          to_return(status: 200, body: read_fixture_file('app_price_schedule.json'), headers: { 'Content-Type' => 'application/json' })
+      end
+
+      def stub_get_app_price_points
+        stub_request(:get, "https://appstoreconnect.apple.com/iris/v1/apps/123456789/appPricePoints?filter%5Bterritory%5D=USA&include=territory").
+          to_return(status: 200, body: read_fixture_file('app_price_points.json'), headers: { 'Content-Type' => 'application/json' })
+      end
+
+      def stub_post_app_price_schedule
+        stub_request(:post, "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules").
+          to_return(status: 200, body: read_fixture_file('post_app_price_schedule.json'), headers: { 'Content-Type' => 'application/json' })
+      end
+
+      def stub_post_app_availability
+        stub_request(:post, "https://appstoreconnect.apple.com/iris/v2/appAvailabilities").
+          to_return(status: 200, body: read_fixture_file('post_app_availability.json'), headers: { 'Content-Type' => 'application/json' })
       end
 
       def stub_get_app_infos
