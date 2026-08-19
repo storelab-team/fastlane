@@ -1,0 +1,76 @@
+{
+  "data": {
+    "type": "appPriceSchedules",
+    "id": "123456789",
+    "relationships": {
+      "baseTerritory": {
+        "data": {
+          "type": "territories",
+          "id": "USA"
+        },
+        "links": {
+          "self": "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules/123456789/relationships/baseTerritory",
+          "related": "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules/123456789/baseTerritory"
+        }
+      },
+      "manualPrices": {
+        "data": [
+          {
+            "type": "appPrices",
+            "id": "price-1"
+          }
+        ],
+        "links": {
+          "self": "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules/123456789/relationships/manualPrices",
+          "related": "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules/123456789/manualPrices"
+        }
+      },
+      "automaticPrices": {
+        "links": {
+          "self": "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules/123456789/relationships/automaticPrices",
+          "related": "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules/123456789/automaticPrices"
+        }
+      }
+    },
+    "links": {
+      "self": "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules/123456789"
+    }
+  },
+  "included": [
+    {
+      "type": "territories",
+      "id": "USA",
+      "attributes": {
+        "currency": "USD"
+      }
+    },
+    {
+      "type": "appPrices",
+      "id": "price-1",
+      "attributes": {
+        "startDate": null,
+        "endDate": null,
+        "manual": true
+      },
+      "relationships": {
+        "appPricePoint": {
+          "data": {
+            "type": "appPricePoints",
+            "id": "eyJzIjoiMTIzNDU2Nzg5IiwidCI6IlVTQSIsInAiOiIxMDAwMCJ9"
+          }
+        }
+      }
+    },
+    {
+      "type": "appPricePoints",
+      "id": "eyJzIjoiMTIzNDU2Nzg5IiwidCI6IlVTQSIsInAiOiIxMDAwMCJ9",
+      "attributes": {
+        "customerPrice": "0.0",
+        "proceeds": "0.0"
+      }
+    }
+  ],
+  "links": {
+    "self": "https://appstoreconnect.apple.com/iris/v1/apps/123456789/appPriceSchedule?include=manualPrices%2CmanualPrices.appPricePoint%2CbaseTerritory"
+  }
+}

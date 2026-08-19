@@ -158,6 +158,70 @@ describe Spaceship::ConnectAPI::App do
     end
   end
 
+  describe("#fetch_app_price_schedule") do
+    it('fetches the app price schedule') do
+      ConnectAPIStubbing::Tunes.stub_get_app_price_schedule
+      app = Spaceship::ConnectAPI::App.new("123456789", [])
+
+      schedule = app.fetch_app_price_schedule(includes: "manualPrices,manualPrices.appPricePoint,baseTerritory")
+
+      expect(schedule).to be_an_instance_of(Spaceship::ConnectAPI::AppPriceSchedule)
+      expect(schedule.id).to eq("123456789")
+      expect(schedule.base_territory).to be_an_instance_of(Spaceship::ConnectAPI::Territory)
+      expect(schedule.base_territory.id).to eq("USA")
+      expect(schedule.manual_prices.count).to eq(1)
+      expect(schedule.manual_prices.first).to be_an_instance_of(Spaceship::ConnectAPI::AppPrice)
+      expect(schedule.manual_prices.first.manual).to eq(true)
+    end
+  end
+
+  describe("#fetch_app_price_points") do
+    it('fetches app price points for a territory') do
+      ConnectAPIStubbing::Tunes.stub_get_app_price_points
+      app = Spaceship::ConnectAPI::App.new("123456789", [])
+
+      price_points = app.fetch_app_price_points(filter: { territory: "USA" }, includes: "territory")
+
+      expect(price_points.count).to eq(3)
+      expect(price_points[0].customer_price).to eq("0.0")
+      expect(price_points[1].customer_price).to eq("0.99")
+      expect(price_points[2].customer_price).to eq("1.99")
+      expect(price_points[0].territory).to be_an_instance_of(Spaceship::ConnectAPI::Territory)
+      expect(price_points[0].territory.id).to eq("USA")
+    end
+  end
+
+  describe("#update_price_schedule") do
+    it('creates a price schedule') do
+      ConnectAPIStubbing::Tunes.stub_post_app_price_schedule
+      app = Spaceship::ConnectAPI::App.new("123456789", [])
+
+      schedule = app.update_price_schedule(
+        base_territory_id: "USA",
+        manual_prices: [{ app_price_point_id: "price-point-123" }]
+      )
+
+      expect(schedule).to be_an_instance_of(Spaceship::ConnectAPI::AppPriceSchedule)
+      expect(schedule.id).to eq("123456789")
+    end
+  end
+
+  describe("#update_availability") do
+    it('updates app availability') do
+      ConnectAPIStubbing::Tunes.stub_post_app_availability
+      app = Spaceship::ConnectAPI::App.new("123456789", [])
+
+      availability = app.update_availability(
+        territory_ids: ["USA", "GBR"],
+        available_in_new_territories: true
+      )
+
+      expect(availability).to be_an_instance_of(Spaceship::ConnectAPI::AppAvailability)
+      expect(availability.id).to eq("123456789")
+      expect(availability.available_in_new_territories).to eq(true)
+    end
+  end
+
   describe("#get_app_availabilities") do
     it('gets app availabilities when app is ready for distribution') do
       ConnectAPIStubbing::Tunes.stub_get_app_availabilities_ready_for_distribution

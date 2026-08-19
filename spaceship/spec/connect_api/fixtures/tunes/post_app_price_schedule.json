@@ -1,0 +1,25 @@
+{
+  "data": {
+    "type": "appPriceSchedules",
+    "id": "123456789",
+    "relationships": {
+      "baseTerritory": {
+        "data": {
+          "type": "territories",
+          "id": "USA"
+        }
+      },
+      "manualPrices": {
+        "data": [
+          {
+            "type": "appPrices",
+            "id": "new-price-1"
+          }
+        ]
+      }
+    },
+    "links": {
+      "self": "https://appstoreconnect.apple.com/iris/v1/appPriceSchedules/123456789"
+    }
+  }
+}

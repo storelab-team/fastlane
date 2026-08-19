@@ -7,7 +7,7 @@ module Spaceship
       attr_accessor :app
       attr_accessor :available_in_new_territories
 
-      attr_accessor :territoryAvailabilities
+      attr_accessor :territory_availabilities
 
       attr_mapping({
           app: 'app',
