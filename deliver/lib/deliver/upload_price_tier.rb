@@ -15,26 +15,28 @@ module Deliver
       app = Deliver.cache[:app]
       base_territory = options[:base_territory] || "USA"
 
-      old_price_tier = fetch_current_price_tier(app)
+      price_point = find_price_point(app, base_territory, price_tier)
+      current_price_point = fetch_current_price_point(app)
 
-      if old_price_tier && price_tier.to_s == old_price_tier.to_s
-        UI.success("Price Tier unchanged (tier #{old_price_tier})")
+      if current_price_point && current_price_point.id == price_point.id
+        UI.success("Price Tier unchanged (tier #{price_tier}, #{price_point.customer_price})")
         return
       end
-
-      price_point = find_price_point(app, base_territory, price_tier)
 
       app.update_price_schedule(
         base_territory_id: base_territory,
         manual_prices: [{ app_price_point_id: price_point.id }]
       )
 
-      UI.success("Successfully updated the price schedule from tier #{old_price_tier || 'none'} to tier #{price_tier}")
+      UI.success("Successfully updated the price schedule to tier #{price_tier} (#{price_point.customer_price})")
     end
 
     private
 
-    def fetch_current_price_tier(app)
+    # Returns the price point currently in effect, so it can be compared against
+    # the desired one by ID. Comparing a tier number to a customer price string
+    # never matches ("1" vs "0.99") and would re-post the schedule every run.
+    def fetch_current_price_point(app)
       schedule = app.fetch_app_price_schedule(includes: "manualPrices,manualPrices.appPricePoint,baseTerritory")
       return nil unless schedule
 
@@ -44,7 +46,7 @@ module Deliver
       current = manual_prices.find { |p| p.end_date.nil? }
       return nil unless current&.app_price_point
 
-      current.app_price_point.customer_price
+      current.app_price_point
     rescue => e
       UI.verbose("Could not fetch current price schedule: #{e.message}")
       nil
@@ -64,8 +66,10 @@ module Deliver
 
       point ||= price_points[price_tier.to_i] if price_tier.to_i < price_points.length
 
-      UI.user_error!("Could not find a price point for tier #{price_tier} in territory #{territory}. " \
-                      "Available price points: #{price_points.map(&:customer_price).first(10).join(', ')}...") unless point
+      unless point
+        UI.user_error!("Could not find a price point for tier #{price_tier} in territory #{territory}. " \
+                        "Available price points: #{price_points.map(&:customer_price).first(10).join(', ')}...")
+      end
       point
     end
 

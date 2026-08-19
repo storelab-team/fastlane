@@ -155,7 +155,7 @@ module Spaceship
       # App Availabilities
       #
 
-      def get_app_availabilities(client: nil, filter: {}, includes: "territoryAvailabilities", limit: { "territoryAvailabilities": 200 })
+      def get_app_availabilities(client: nil, filter: {}, includes: "territoryAvailabilities", limit: { "territoryAvailabilities": 50 })
         client ||= Spaceship::ConnectAPI
         resp = client.get_app_availabilities(app_id: id, filter: filter, includes: includes, limit: limit, sort: nil)
         return resp.to_models.first
@@ -218,7 +218,7 @@ module Spaceship
         return resp.to_models.first
       end
 
-      def fetch_territory_availabilities(client: nil, includes: "territory", limit: 50)
+      def fetch_territory_availabilities(client: nil, includes: "territory", limit: 200)
         client ||= Spaceship::ConnectAPI
         resps = client.get_territory_availabilities(app_availability_id: id, includes: includes, limit: limit).all_pages
         return resps.flat_map(&:to_models)

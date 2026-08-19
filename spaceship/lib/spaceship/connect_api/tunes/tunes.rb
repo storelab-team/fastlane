@@ -367,7 +367,7 @@ module Spaceship
         #
 
         def get_app_availabilities(app_id: nil, filter: nil, includes: nil, limit: nil, sort: nil)
-          params = tunes_request_client.build_params(filter: nil, includes: includes, limit: limit, sort: nil)
+          params = tunes_request_client.build_params(filter: filter, includes: includes, limit: limit, sort: sort)
           tunes_request_client.get("#{Version::V2}/appAvailabilities/#{app_id}", params)
         end
 
