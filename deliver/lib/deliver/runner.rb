@@ -1,3 +1,4 @@
+require 'tmpdir'
 require 'precheck/options'
 require 'precheck/runner'
 require 'fastlane_core/configuration/configuration'
@@ -198,7 +199,7 @@ module Deliver
         package_path = FastlaneCore::IpaUploadPackageBuilder.new.generate(
           app_id: Deliver.cache[:app].id,
           ipa_path: ipa_path,
-          package_path: "/tmp",
+          package_path: Dir.tmpdir,
           platform: platform
         )
         result = transporter.verify(package_path: package_path, asset_path: ipa_path, platform: platform)
@@ -206,7 +207,7 @@ module Deliver
         package_path = FastlaneCore::PkgUploadPackageBuilder.new.generate(
           app_id: Deliver.cache[:app].id,
           pkg_path: pkg_path,
-          package_path: "/tmp",
+          package_path: Dir.tmpdir,
           platform: platform
         )
         result = transporter.verify(package_path: package_path, asset_path: pkg_path, platform: platform)
@@ -235,7 +236,7 @@ module Deliver
         package_path = FastlaneCore::IpaUploadPackageBuilder.new.generate(
           app_id: Deliver.cache[:app].id,
           ipa_path: ipa_path,
-          package_path: "/tmp",
+          package_path: Dir.tmpdir,
           platform: platform
         )
         result = transporter.upload(package_path: package_path, asset_path: ipa_path, platform: platform)
@@ -243,7 +244,7 @@ module Deliver
         package_path = FastlaneCore::PkgUploadPackageBuilder.new.generate(
           app_id: Deliver.cache[:app].id,
           pkg_path: pkg_path,
-          package_path: "/tmp",
+          package_path: Dir.tmpdir,
           platform: platform
         )
         result = transporter.upload(package_path: package_path, asset_path: pkg_path, platform: platform)

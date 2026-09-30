@@ -14,6 +14,20 @@ describe Spaceship::TunesClient do
         subject.login('bad-username', 'bad-password')
       end.to raise_exception(Spaceship::Client::InvalidUserCredentialsError, "Invalid username and password combination. Used 'bad-username' as the username.")
     end
+
+    it 'names the cached API key when App Store Connect refuses the session after signing in' do
+      Dir.mktmpdir do |dir|
+        cache = File.join(dir, "spaceship_itc_service_key.txt")
+        File.write(cache, "e0abc")
+        allow_any_instance_of(Spaceship::Client).to receive(:itc_service_key_path).and_return(cache)
+        stub_request(:head, "https://appstoreconnect.apple.com/logout").to_timeout
+        stub_request(:get, "https://appstoreconnect.apple.com/olympus/v1/session").to_return(status: 401)
+
+        expect do
+          subject.login('spaceship@krausefx.com', 'so_secret')
+        end.to raise_exception(Spaceship::UnauthorizedAccessError, /came from the cache at .* and may be stale/)
+      end
+    end
   end
 
   describe 'client' do
@@ -34,10 +48,21 @@ describe Spaceship::TunesClient do
     before(:each) do
       # Don't need to test hashcash here
       allow_any_instance_of(Spaceship::Client).to receive(:fetch_hashcash)
+
+      # These examples count requests, and one of the requests used to be
+      # Client#itc_service_key fetching the widget key. That method caches to a
+      # fixed path in /tmp, so the count depended on whether the file happened
+      # to exist: cold, the fetch ran and the count was two; warm, it did not
+      # and the third stubbed request was never reached, so nothing was raised.
+      # spaceship/spec/spec_helper.rb used to delete the file around every
+      # example to force it cold, which works in one process and races in
+      # several. Answer the key directly so the count is the same
+      # either way. See fastlane#30184.
+      allow_any_instance_of(Spaceship::Client).to receive(:itc_service_key).and_return("e0abc")
     end
 
     it 'has authType is sa' do
-      expect_any_instance_of(Spaceship::Client).to receive(:request).twice.and_call_original
+      expect_any_instance_of(Spaceship::Client).to receive(:request).once.and_call_original
 
       response_second = double
       allow(response_second).to receive(:status).and_return(412)
@@ -51,7 +76,7 @@ describe Spaceship::TunesClient do
     end
 
     it 'has authType of hsa' do
-      expect_any_instance_of(Spaceship::Client).to receive(:request).twice.and_call_original
+      expect_any_instance_of(Spaceship::Client).to receive(:request).once.and_call_original
 
       response_second = double
       allow(response_second).to receive(:status).and_return(412)
@@ -65,7 +90,7 @@ describe Spaceship::TunesClient do
     end
 
     it 'has authType of non-sa' do
-      expect_any_instance_of(Spaceship::Client).to receive(:request).twice.and_call_original
+      expect_any_instance_of(Spaceship::Client).to receive(:request).once.and_call_original
 
       response_second = double
       allow(response_second).to receive(:status).and_return(412)
@@ -79,7 +104,7 @@ describe Spaceship::TunesClient do
     end
 
     it 'has authType of hsa2' do
-      expect_any_instance_of(Spaceship::Client).to receive(:request).twice.and_call_original
+      expect_any_instance_of(Spaceship::Client).to receive(:request).once.and_call_original
 
       response_second = double
       allow(response_second).to receive(:status).and_return(412)

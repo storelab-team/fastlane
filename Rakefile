@@ -33,39 +33,10 @@ task(:test_all_individually) do
 end
 
 task(:generate_team_table) do
-  require 'json'
-  content = ["<table id='team'>"]
-
-  contributors = JSON.parse(File.read("team.json"))
-  counter = 0
-  number_of_rows = 5
-
-  contributors.keys.shuffle.each do |github_user|
-    user_content = contributors[github_user]
-    github_user_name = user_content['name']
-    github_user_id = github_user_name.downcase.gsub(' ', '-')
-    github_profile_url = "https://github.com/#{github_user}"
-
-    content << "<tr>" if counter % number_of_rows == 0
-    content << "<td id='#{github_user_id}'>"
-    content << "<a href='#{github_profile_url}'>"
-    content << "<img src='#{github_profile_url}.png' width='140px;'>"
-    content << "</a>"
-    if user_content['twitter']
-      content << "<h4 align='center'><a href='https://twitter.com/#{user_content['twitter']}'>#{github_user_name}</a></h4>"
-    else
-      content << "<h4 align='center'>#{github_user_name}</h4>"
-    end
-
-    content << "</td>"
-    content << "</tr>" if counter % number_of_rows == number_of_rows - 1
-
-    counter += 1
-  end
-  content << "</table>"
+  require_relative 'fastlane/lib/fastlane/documentation/markdown_docs_generator'
 
   readme = File.read("README.md")
-  readme.gsub!(%r{\<table id='team'\>.*\<\/table\>}m, content.join("\n"))
+  readme.sub!(/(?<=<!-- team:start -->\n).*(?=<!-- team:end -->)/m) { Fastlane::MarkdownDocsGenerator.render_team("team.json") }
   File.write("README.md", readme)
   puts("All done")
 end
@@ -108,6 +79,14 @@ task(:prepare_rubocop_config) do
   File.write(target, YAML.dump(config))
 end
 
-%w(build install release).each do |t|
+# test_all and test_parallel as well as the packaging tasks. The template's
+# .rubocop.yml is generated and gitignored, so a working copy can be left
+# holding one from an older fastlane, and plugin_generator_spec then generates a
+# plugin whose gemspec and rubocop config disagree about the Ruby version. That
+# surfaces as `expected 0, got 1` with the rubocop output thrown away, which is
+# a poor thing to debug: it looks like an environment problem and is a stale
+# file. Regenerating first is cheap and makes the run say the same thing on any
+# machine. See fastlane#30184.
+%w(build install release test_all test_parallel).each do |t|
   Rake::Task[t].enhance([:prepare_rubocop_config]) if Rake::Task.task_defined?(t)
 end
