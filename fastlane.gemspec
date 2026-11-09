@@ -8,33 +8,33 @@ Gem::Specification.new do |spec|
   spec.name          = "fastlane"
   spec.version       = Fastlane::VERSION
   # list of authors is regenerated and resorted on each release
-  spec.authors       = ["Helmut Januschka",
-                        "Josh Holtz",
-                        "Danielle Tomlinson",
-                        "Max Ott",
-                        "Stefan Natchev",
-                        "Fumiya Nakamura",
-                        "Luka Mirosevic",
-                        "Iulian Onofrei",
-                        "Joshua Liebowitz",
-                        "Andrew McBurney",
-                        "Olivier Halligon",
-                        "Daniel Jankowski",
-                        "Felix Krause",
-                        "Matthew Ellis",
-                        "Jérôme Lacoste",
-                        "Manish Rathi",
-                        "Roger Oba",
-                        "Satoshi Namai",
-                        "Łukasz Grabowski",
-                        "Manu Wallner",
-                        "Kohki Miki",
-                        "Aaron Brager",
+  spec.authors       = ["Josh Holtz",
                         "Jimmy Dee",
-                        "Maksym Grebenets",
+                        "Joshua Liebowitz",
+                        "Max Ott",
+                        "Olivier Halligon",
+                        "Helmut Januschka",
+                        "Satoshi Namai",
+                        "Danielle Tomlinson",
+                        "Manish Rathi",
+                        "Iulian Onofrei",
+                        "Kohki Miki",
                         "Jorge Revuelta H",
+                        "Andrew McBurney",
+                        "Connor Tumbleson",
                         "Jan Piotrowski",
-                        "Connor Tumbleson"]
+                        "Maksym Grebenets",
+                        "Manu Wallner",
+                        "Stefan Natchev",
+                        "Łukasz Grabowski",
+                        "Matthew Ellis",
+                        "Roger Oba",
+                        "Luka Mirosevic",
+                        "Aaron Brager",
+                        "Fumiya Nakamura",
+                        "Jérôme Lacoste",
+                        "Daniel Jankowski",
+                        "Felix Krause"]
 
   spec.email         = ["fastlane@krausefx.com"]
   spec.summary       = Fastlane::SUMMARY
@@ -49,7 +49,8 @@ Gem::Specification.new do |spec|
     "source_code_uri" => "https://github.com/fastlane/fastlane"
   }
 
-  spec.required_ruby_version = '>= 3.2'
+  # A literal: RuboCop reads its target Ruby from it. spec/ci_ruby_versions_spec.rb checks both against Fastlane::MINIMUM_RUBY
+  spec.required_ruby_version = '>= 3.2.0'
 
   spec.files = Dir.glob("*/lib/**/*", File::FNM_DOTMATCH) + Dir["fastlane/swift/**/*"] + Dir["bin/*"] + Dir["*/README.md"] + %w(README.md LICENSE .yardopts) - Dir["fastlane/lib/fastlane/actions/device_grid/assets/*"] - Dir["fastlane/lib/fastlane/actions/docs/assets/*"]
   spec.bindir = "bin"
@@ -90,7 +91,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency('optparse', '>= 0.1.1', '< 1.0.0') # Used to parse options with Commander
   spec.add_dependency('plist', '>= 3.1.0', '< 4.0.0') # Needed for set_build_number_repository and get_info_plist_value actions
   spec.add_dependency('rubyzip', '>= 3.4.0', '< 4.0.0') # fix swift/ipa in gym
-  spec.add_dependency('security', '~> 0.3') # macOS Keychain manager
+  spec.add_dependency('security', '~> 0.4') # macOS Keychain manager
   spec.add_dependency('simctl', '~> 1.6.3') # Used for querying and interacting with iOS simulators
   spec.add_dependency('terminal-notifier', '>= 3.1.0', '< 4.0.0') # macOS notifications
   spec.add_dependency('terminal-table', '~> 4') # Actions documentation

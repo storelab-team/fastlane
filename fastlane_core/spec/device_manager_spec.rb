@@ -38,6 +38,19 @@ describe FastlaneCore do
       end.to raise_error(FastlaneCore::Interface::FastlaneError)
     end
 
+    it 'lists the same iOS simulators as the JSON output of the installed simctl', requires_xcodebuild: true do
+      # The version in the runtime's name, as in the text headers: iOS-27-2-iPhone19-4 is "iOS 27.2", iOS-26-4 is "iOS 26.4" at version 26.4.1
+      versions = JSON.parse(`xcrun simctl list -j runtimes`)['runtimes'].to_h { |runtime| [runtime['identifier'], runtime['name'].split[1]] }
+      listed = JSON.parse(`xcrun simctl list -j devices`)['devices'].flat_map do |runtime, devices|
+        next [] unless runtime.split('.').last.start_with?('iOS-')
+        devices.select { |device| device['isAvailable'] }.map { |device| [device['udid'], device['name'], versions[runtime]] }
+      end
+
+      parsed = FastlaneCore::DeviceManager.simulators('iOS').map { |device| [device.udid, device.name, device.os_version] }
+      expect(parsed).not_to be_empty
+      expect(parsed).to match_array(listed)
+    end
+
     describe "properly parses the simctl output and generates Device objects for iOS simulator" do
       it "Xcode 7" do
         response = "response"
@@ -464,6 +477,22 @@ describe FastlaneCore do
         device.disable_slide_to_type
       end
 
+      it "passes the preferences plist as one argument when the home directory contains a space" do
+        device = FastlaneCore::DeviceManager::Device.new(udid: "3E67398C-AF70-4D77-A22C-D43AA8623FE3", os_type: "iOS", os_version: "13.0", is_simulator: true)
+        allow(UI).to receive(:message)
+
+        # Absolute on every platform: on Windows "/Users/Jane Doe" has no drive and Ruby refuses it as a home
+        FastlaneSpec::Env.with_env_values('HOME' => File.join(Dir.tmpdir, 'Jane Doe')) do
+          plist_path = File.expand_path("~/Library/Developer/CoreSimulator/Devices/3E67398C-AF70-4D77-A22C-D43AA8623FE3/data/Library/Preferences/com.apple.keyboard.ContinuousPath.plist")
+          expect(plist_path).to include("Jane Doe")
+          expect(FastlaneCore::Helper).to receive(:backticks) do |command|
+            expect(Shellwords.split(command)).to eq(["/usr/libexec/PlistBuddy", "-c", "Add :KeyboardContinuousPathEnabled bool false", plist_path, ">/dev/null", "2>&1"])
+          end
+
+          device.disable_slide_to_type
+        end
+      end
+
       it "bypass slide to type disabling if less than iOS 13.0" do
         device = FastlaneCore::DeviceManager::Device.new(os_type: "iOS", os_version: "12.4", is_simulator: true)
 
@@ -489,11 +518,42 @@ describe FastlaneCore do
       end
 
       it "boots the simulator" do
-        device = FastlaneCore::DeviceManager::Device.new(os_type: "iOS", os_version: "13.0", is_simulator: true, state: nil)
+        device = FastlaneCore::DeviceManager::Device.new(udid: "1234", os_type: "iOS", os_version: "13.0", is_simulator: true, state: nil)
+        status = double('status', "success?": true)
+        expect(Open3).to receive(:capture2e).with("xcrun simctl bootstatus 1234 -b").and_return(["Finished", status])
 
         device.boot
 
         expect(device.state).to eq('Booted')
+      end
+
+      it "warns when the simulator fails to boot" do
+        device = FastlaneCore::DeviceManager::Device.new(name: "iPhone 17", udid: "1234", os_type: "iOS", os_version: "13.0", is_simulator: true, state: "Shutdown")
+        status = double('status', "success?": false)
+        expect(Open3).to receive(:capture2e).with("xcrun simctl bootstatus 1234 -b").and_return(["Invalid device: 1234\n", status])
+
+        expect(UI).to receive(:important).with("Unable to boot iPhone 17: Invalid device: 1234")
+
+        device.boot
+      end
+
+      it "boots a tvOS simulator" do
+        device = FastlaneCore::DeviceManager::Device.new(name: "Apple TV", udid: "1234", os_type: "tvOS", os_version: "26.5", is_simulator: true, state: "Shutdown")
+        status = double('status', "success?": true)
+        expect(Open3).to receive(:capture2e).with("xcrun simctl bootstatus 1234 -b").and_return(["Finished", status])
+
+        device.boot
+
+        expect(device.state).to eq('Booted')
+      end
+
+      it "shuts down a tvOS simulator" do
+        device = FastlaneCore::DeviceManager::Device.new(name: "Apple TV", udid: "1234", os_type: "tvOS", os_version: "26.5", is_simulator: true, state: "Booted")
+        expect(device).to receive(:`).with("xcrun simctl shutdown 1234 2>/dev/null")
+
+        device.shutdown
+
+        expect(device.state).to eq('Shutdown')
       end
     end
   end

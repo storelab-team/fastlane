@@ -88,7 +88,6 @@ module Produce
     end
 
     # rubocop:disable Metrics/PerceivedComplexity
-    # rubocop:disable Require/MissingRequireStatement
     def update(on, options)
       updated = valid_services_for(options).count
 
@@ -420,9 +419,10 @@ module Produce
 
     def bundle_id
       return @bundle_id if @bundle_id
-
-      Produce.authenticate_connect_api!
-
+      UI.message("Starting login with user '#{Produce.config[:username]}'")
+      Spaceship.login(Produce.config[:username], nil)
+      Spaceship.select_team
+      UI.message("Successfully logged in")
       @bundle_id ||= Spaceship::ConnectAPI::BundleId.find(Produce.config[:app_identifier].to_s)
     end
   end

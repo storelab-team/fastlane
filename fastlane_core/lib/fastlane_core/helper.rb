@@ -2,6 +2,7 @@ require 'logger'
 require 'colored'
 require 'tty-spinner'
 require 'pathname'
+require 'fileutils'
 
 require_relative 'command_executor'
 require_relative 'fastlane_folder'
@@ -55,6 +56,21 @@ module FastlaneCore
     # returns true if fastlane was installed via RubyGems
     def self.rubygems?
       !self.bundler? && !self.contained_fastlane? && !self.homebrew? && !self.mac_app?
+    end
+
+    # How this fastlane was installed, as reported to analytics and printed at startup
+    def self.install_method
+      if self.bundler?
+        'bundler'
+      elsif self.contained_fastlane?
+        'standalone'
+      elsif self.homebrew?
+        'homebrew'
+      elsif self.mac_app?
+        'mac_app'
+      else
+        'gem'
+      end
     end
 
     # environment
@@ -188,7 +204,7 @@ module FastlaneCore
     def self.swift_version
       if self.which('swift')
         output = `swift --version 2> /dev/null`
-        return output.split("\n").first.match(/version ([0-9.]+)/).captures.first
+        return output.lines.first.to_s[/version ([0-9.]+)/, 1]
       end
       return nil
     end
@@ -247,6 +263,9 @@ module FastlaneCore
         ].each do |path|
           result = File.expand_path(File.join(self.xcode_path, path))
           return result if File.exist?(result)
+        end
+        if FastlaneCore::Env.truthy?("FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT")
+          UI.user_error!("Could not find transporter at #{self.xcode_path}: Xcode 14 and newer no longer include it. Remove FASTLANE_ITUNES_TRANSPORTER_USE_SHELL_SCRIPT so fastlane uploads with altool, or install Transporter and set FASTLANE_ITUNES_TRANSPORTER_PATH.")
         end
         UI.user_error!("Could not find transporter at #{self.xcode_path}. Please make sure you set the correct path to your Xcode installation.")
       elsif self.windows?
@@ -329,21 +348,36 @@ module FastlaneCore
       str.gsub(/\e\[([;\d]+)?m/, '')
     end
 
+    # Opens path for writing, readable and writable only by its owner (0600), including when it
+    # already exists: the mode is set before anything is written. Windows has no such mode.
+    def self.open_owner_only(path, mode = "w", &block)
+      File.open(path, mode, 0o600) do |file|
+        file.chmod(0o600) unless windows?
+        yield(file)
+      end
+    end
+
+    # Creates dir and any missing parents accessible only by its owner (0700); an existing dir is restricted too
+    def self.mkdir_owner_only(dir)
+      FileUtils.mkdir_p(dir, mode: 0o700)
+      File.chmod(0o700, dir) unless windows?
+    end
+
     # Zips directory
     def self.zip_directory(path, output_path, contents_only: false, overwrite: false, print: true)
       if overwrite
-        overwrite_command = " && rm -f '#{output_path}'"
+        overwrite_command = " && rm -f #{output_path.shellescape}"
       else
         overwrite_command = ""
       end
 
       if contents_only
-        command = "cd '#{path}'#{overwrite_command} && zip -r '#{output_path}' *"
+        command = "cd #{path.shellescape}#{overwrite_command} && zip -r #{output_path.shellescape} *"
       else
         containing_path = File.expand_path("..", path)
         contents_path = File.basename(path)
 
-        command = "cd '#{containing_path}'#{overwrite_command} && zip -r '#{output_path}' '#{contents_path}'"
+        command = "cd #{containing_path.shellescape}#{overwrite_command} && zip -r #{output_path.shellescape} #{contents_path.shellescape}"
       end
 
       UI.command(command) unless print

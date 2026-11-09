@@ -1,5 +1,9 @@
 require "bundler/gem_tasks"
 
+# The release workflow runs `rake release` (rubygems/release-gem) after the create_github_release lane has already
+# tagged the release. Prevent another tag.
+Rake::Task["release:source_control_push"].clear
+
 Dir.glob("internal/rakelib/*.rake").each { |r| load r }
 
 task(:test_all) do
@@ -36,14 +40,14 @@ task(:generate_team_table) do
   require_relative 'fastlane/lib/fastlane/documentation/markdown_docs_generator'
 
   readme = File.read("README.md")
-  readme.sub!(/(?<=<!-- team:start -->\n).*(?=<!-- team:end -->)/m) { Fastlane::MarkdownDocsGenerator.render_team("team.json") }
+  readme.sub!(/(?<=<!-- team:start -->\n).*(?=<!-- team:end -->)/m) { Fastlane::MarkdownDocsGenerator.render_team("internal/team.json") }
   File.write("README.md", readme)
   puts("All done")
 end
 
 task(:update_gem_spec_authors) do
   require 'json'
-  contributors = JSON.parse(File.read("team.json"))
+  contributors = JSON.parse(File.read("internal/team.json"))
 
   names = contributors.values.collect do |current|
     current["name"]
@@ -68,18 +72,15 @@ task(:prepare_rubocop_config) do
 
   next unless File.exist?(rubocop_config)
 
-  config = YAML.safe_load(File.read(rubocop_config), aliases: true)
-  config['require'] = %w[rubocop/require_tools rubocop-performance]
-  config.delete('inherit_from')
-  config.delete('CrossPlatform/ForkUsage')
-  config.delete('Lint/IsStringUsage')
+  require_relative 'internal/plugin_template_rubocop_config'
+  config = Fastlane::Internal::PluginTemplateRubocopConfig.from(YAML.safe_load(File.read(rubocop_config), aliases: true))
 
   target = File.join(lib, 'fastlane/plugins/template/.rubocop.yml')
   FileUtils.mkdir_p(File.dirname(target))
   File.write(target, YAML.dump(config))
 end
 
-# test_all and test_parallel as well as the packaging tasks. The template's
+# Every task that runs specs, as well as the packaging tasks. The template's
 # .rubocop.yml is generated and gitignored, so a working copy can be left
 # holding one from an older fastlane, and plugin_generator_spec then generates a
 # plugin whose gemspec and rubocop config disagree about the Ruby version. That
@@ -87,6 +88,6 @@ end
 # a poor thing to debug: it looks like an environment problem and is a stale
 # file. Regenerating first is cheap and makes the run say the same thing on any
 # machine. See fastlane#30184.
-%w(build install release test_all test_parallel).each do |t|
+%w(build install release test_all test_parallel test_all_individually test_isolated test_race spec_timings).each do |t|
   Rake::Task[t].enhance([:prepare_rubocop_config]) if Rake::Task.task_defined?(t)
 end
